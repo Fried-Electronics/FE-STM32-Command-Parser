@@ -21,6 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "commandParser.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -40,6 +44,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -48,8 +54,10 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+void Set_LED(char** Args);
 
 /* USER CODE END PFP */
 
@@ -86,8 +94,19 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  // Testing the on-board LED with arguments
+  char testOn[] = "ON";
+  char testOff[] = "OFF";
+  char* testArgs[2];
+  testArgs[0] = testOn;
+  testArgs[1] = testOff;
+  Set_LED(&testArgs[0]);
+  HAL_Delay(1000);
+  Set_LED(&testArgs[1]);
 
   /* USER CODE END 2 */
 
@@ -197,6 +216,26 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -222,6 +261,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void Set_LED(char** Args)
+{
+	GPIO_PinState state = GPIO_PIN_RESET;
+
+	if (0 == strcmp(Args[0], "ON"))
+	{
+		state = GPIO_PIN_SET;
+	} else if (0 == strcmp(Args[0], "OFF"))
+	{
+		state = GPIO_PIN_RESET;
+	} else
+	{
+		return;
+	}
+
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, state);
+}
 
 /* USER CODE END 4 */
 

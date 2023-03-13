@@ -48,6 +48,7 @@ DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
+SerialBuffer_t serialRxBuf;
 
 /* USER CODE END PV */
 
@@ -57,7 +58,8 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void Set_LED(char** Args);
+void Set_LED(GPIO_PinState State);
+void cmd_Set_LED(char** Args);
 
 /* USER CODE END PFP */
 
@@ -89,6 +91,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  Init_Command_Parser(&serialRxBuf);
 
   /* USER CODE END SysInit */
 
@@ -99,14 +102,15 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // Testing the on-board LED with arguments
-  char testOn[] = "ON";
-  char testOff[] = "OFF";
-  char* testArgs[2];
-  testArgs[0] = testOn;
-  testArgs[1] = testOff;
-  Set_LED(&testArgs[0]);
+  Add_Command("LED", &cmd_Set_LED);
+
+  strcpy(serialRxBuf.charBuf, "LED ON\n");
+  Read_Buffer(&serialRxBuf);
+
   HAL_Delay(1000);
-  Set_LED(&testArgs[1]);
+
+  strcpy(serialRxBuf.charBuf, "LED OFF\n");
+  Read_Buffer(&serialRxBuf);
 
   /* USER CODE END 2 */
 
@@ -261,9 +265,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void Set_LED(char** Args)
+void Set_LED(GPIO_PinState State)
 {
-	GPIO_PinState state = GPIO_PIN_RESET;
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, State);
+}
+
+void cmd_Set_LED(char** Args)
+{
+	GPIO_PinState state = HAL_GPIO_ReadPin(LD2_GPIO_Port, LD2_Pin);
 
 	if (0 == strcmp(Args[0], "ON"))
 	{
@@ -273,10 +282,11 @@ void Set_LED(char** Args)
 		state = GPIO_PIN_RESET;
 	} else
 	{
+		// Invalid argument
 		return;
 	}
 
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, state);
+	Set_LED(state);
 }
 
 /* USER CODE END 4 */

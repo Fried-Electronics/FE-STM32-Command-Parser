@@ -11,30 +11,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 /*			Types			*/
-typedef struct CommandMap_t {
+typedef struct CommandMap_t
+{
     char* cmdName;
     void (*funcPtr)(char**);
 } CommandMap_t;
 
 /*			Global Variables			*/
 // Buffers
-char g_serialBuf[SERIAL_BUFFER_LENGTH];
 CommandMap_t g_cmdMap[MAX_NUM_COMMANDS];
 
 // Variables
 uint32_t g_numCmds = 0;
-uint32_t g_serialBufIndex = 0;
 
 /*			Function Prototypes			*/
-void Add_Command (char* CmdName, void *FuncPtr);
-void Process_Command(char* Cmd);
+static void Process_Command(SerialBuffer_t *SerialBuffer);
+static void Clear_Buffer(SerialBuffer_t *SerialBuffer);
 
 /*			Functions			*/
-void Init_Command_Parser (void)
+void Init_Command_Parser (SerialBuffer_t *SerialBuffer)
 {
+	Clear_Buffer(SerialBuffer);
 
+	// Clear the command map
+	for (int mapIndex = 0; mapIndex < MAX_NUM_COMMANDS; ++mapIndex)
+	{
+		g_cmdMap[mapIndex].cmdName = NULL;
+		g_cmdMap[mapIndex].funcPtr = NULL;
+	}
+	// Clear the command counter
+	g_numCmds = 0;
 }
 
 void Add_Command (char* CmdName, void *FuncPtr)
@@ -44,23 +53,24 @@ void Add_Command (char* CmdName, void *FuncPtr)
 	++g_numCmds;
 }
 
-void Read_Buffer (void)
+void Read_Buffer (SerialBuffer_t *SerialBuffer)
 {
-	/*
-    if (c == '\n') { // end of command
-        buffer[buffer_index] = '\0'; // null-terminate the string
-        buffer_index = 0; // reset the buffer index
+	for (int bufIndex = 0; bufIndex < SERIAL_BUFFER_LENGTH; ++bufIndex)
+	{
+		if ('\n' == SerialBuffer->charBuf[bufIndex])
+		{
+			SerialBuffer->charBuf[bufIndex] = '\0';
+			SerialBuffer->tail = bufIndex;
 
-        // process the command
-        Process_Command(buffer);
-    } else if (buffer_index < MAX_BUFFER_SIZE) { // add character to buffer
-        buffer[buffer_index++] = c;
-    }
-    */
+			Process_Command(SerialBuffer);
+			break;
+		}
+	}
 }
 
-void Process_Command(char* Cmd) {
-    char* token = strtok(Cmd, " ");
+static void Process_Command (SerialBuffer_t *SerialBuffer)
+{
+    char* token = strtok(SerialBuffer->charBuf, " ");
     char* args[MAX_NUM_ARGS];
     uint32_t argCount = 0;
 
@@ -80,4 +90,17 @@ void Process_Command(char* Cmd) {
             break;
         }
     }
+
+    Clear_Buffer(SerialBuffer);
+}
+
+static void Clear_Buffer (SerialBuffer_t *SerialBuffer)
+{
+	// Set the buffer to the NULL termination
+	for (int bufIndex = 0; bufIndex < SERIAL_BUFFER_LENGTH; ++bufIndex)
+	{
+		SerialBuffer->charBuf[bufIndex] = '\0';
+	}
+	// Set the buffer head and tail to zero
+	SerialBuffer->tail = 0;
 }

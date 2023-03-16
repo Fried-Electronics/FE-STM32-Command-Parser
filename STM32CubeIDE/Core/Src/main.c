@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -299,13 +300,19 @@ void cmd_Set_LED(char** Args)
 		validCommand = true;
 	}
 
+	uint32_t txBufferLength = 0;
+	char txBuffer[SERIAL_BUFFER_LENGTH];
 	if (true == validCommand)
 	{
+		txBufferLength = sprintf(txBuffer, "LED set to %s \r\n", Args[0]);
+		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
 		Set_LED(state);
 	}
 	else
 	{
 		// Handle the invalid argument here
+		txBufferLength = sprintf(txBuffer, "LED argument '%s' is invalid \r\n", Args[0]);
+		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
 	}
 }
 

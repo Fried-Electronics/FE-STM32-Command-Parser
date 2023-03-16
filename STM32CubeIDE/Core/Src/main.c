@@ -25,6 +25,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
@@ -48,7 +49,8 @@ DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
-SerialBuffer_t serialRxBuf;
+SerialBuffer_t g_serialRxBuf;
+uint32_t g_uintValue = 0;
 
 /* USER CODE END PV */
 
@@ -60,6 +62,8 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void Set_LED(GPIO_PinState State);
 void cmd_Set_LED(char** Args);
+void Set_Uint_Value(uint32_t Value);
+void cmd_Set_Uint_Value(char** Args);
 
 /* USER CODE END PFP */
 
@@ -91,7 +95,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  Init_Command_Parser(&serialRxBuf);
+  Init_Command_Parser(&g_serialRxBuf);
 
   /* USER CODE END SysInit */
 
@@ -104,13 +108,21 @@ int main(void)
   // Testing the on-board LED with arguments
   Add_Command("LED", &cmd_Set_LED);
 
-  strcpy(serialRxBuf.charBuf, "LED ON\n");
-  Read_Buffer(&serialRxBuf);
+  strcpy(g_serialRxBuf.charBuf, "LED ON\n");
+  Read_Buffer(&g_serialRxBuf);
 
   HAL_Delay(1000);
 
-  strcpy(serialRxBuf.charBuf, "LED OFF\n");
-  Read_Buffer(&serialRxBuf);
+  strcpy(g_serialRxBuf.charBuf, "LED OFF\n");
+  Read_Buffer(&g_serialRxBuf);
+
+  // Testing changing the value of a uint32
+  Add_Command("UINT", &cmd_Set_Uint_Value);
+
+  strcpy(g_serialRxBuf.charBuf, "UINT 5327\n");
+  Read_Buffer(&g_serialRxBuf);
+
+  HAL_UART_Receive_IT(&huart2, (uint8_t*)&g_serialRxBuf.charBuf[g_serialRxBuf.tail], 1);
 
   /* USER CODE END 2 */
 
@@ -118,6 +130,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  Read_Buffer(&g_serialRxBuf);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -272,21 +285,69 @@ void Set_LED(GPIO_PinState State)
 
 void cmd_Set_LED(char** Args)
 {
-	GPIO_PinState state = HAL_GPIO_ReadPin(LD2_GPIO_Port, LD2_Pin);
+	bool validCommand = false;
+	GPIO_PinState state = GPIO_PIN_RESET;
 
 	if (0 == strcmp(Args[0], "ON"))
 	{
 		state = GPIO_PIN_SET;
-	} else if (0 == strcmp(Args[0], "OFF"))
+		validCommand = true;
+	}
+	else if (0 == strcmp(Args[0], "OFF"))
 	{
 		state = GPIO_PIN_RESET;
-	} else
-	{
-		// Invalid argument
-		return;
+		validCommand = true;
 	}
 
-	Set_LED(state);
+	if (true == validCommand)
+	{
+		Set_LED(state);
+	}
+	else
+	{
+		// Handle the invalid argument here
+	}
+}
+
+void Set_Uint_Value(uint32_t Value)
+{
+	g_uintValue = Value;
+}
+
+void cmd_Set_Uint_Value(char** Args)
+{
+	bool validCommand = false;
+	uint32_t value = atoi(Args[0]);
+
+	if (0 == strcmp(Args[0], "0"))
+	{
+		value = 0;
+		validCommand = true;
+	}
+	else if (1 <= value)
+	{
+		validCommand = true;
+	}
+
+	if (true == validCommand)
+	{
+		Set_Uint_Value(value);
+	}
+	else
+	{
+		// Handle the invalid argument here
+	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (&huart2.pRxBuffPtr[0] != (uint8_t*)&g_serialRxBuf.charBuf[(g_serialRxBuf.tail + 1)])
+	{
+		g_serialRxBuf.charBuf[g_serialRxBuf.tail] = *(huart2.pRxBuffPtr - 1);
+	}
+
+	++g_serialRxBuf.tail;
+	HAL_UART_Receive_IT(&huart2, (uint8_t*)&g_serialRxBuf.charBuf[g_serialRxBuf.tail], 1);
 }
 
 /* USER CODE END 4 */

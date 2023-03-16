@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /*			Types			*/
 typedef struct CommandMap_t
@@ -28,7 +29,7 @@ CommandMap_t g_cmdMap[MAX_NUM_COMMANDS];
 uint32_t g_numCmds = 0;
 
 /*			Function Prototypes			*/
-static void Process_Command(SerialBuffer_t *SerialBuffer);
+static bool Process_Command(SerialBuffer_t *SerialBuffer);
 static void Clear_Buffer(SerialBuffer_t *SerialBuffer);
 
 /*			Functions			*/
@@ -55,21 +56,36 @@ void Add_Command (char* CmdName, void *FuncPtr)
 
 void Read_Buffer (SerialBuffer_t *SerialBuffer)
 {
-	for (int bufIndex = 0; bufIndex < SERIAL_BUFFER_LENGTH; ++bufIndex)
+	bool commandReady = false;
+	bool commandFound = false;
+
+	int bufIndex = 0;
+	for (bufIndex = 0; bufIndex < SERIAL_BUFFER_LENGTH; ++bufIndex)
 	{
-		if ('\n' == SerialBuffer->charBuf[bufIndex])
+		if (('\n' == SerialBuffer->charBuf[bufIndex]) || ('\r' == SerialBuffer->charBuf[bufIndex]))
 		{
 			SerialBuffer->charBuf[bufIndex] = '\0';
 			SerialBuffer->tail = bufIndex;
 
-			Process_Command(SerialBuffer);
+			commandReady = true;
+			commandFound = Process_Command(SerialBuffer);
 			break;
+		}
+	}
+
+	if (true == commandReady)
+	{
+		if (false == commandFound)
+		{
+			// Handle invalid command here
+			Clear_Buffer(SerialBuffer);
 		}
 	}
 }
 
-static void Process_Command (SerialBuffer_t *SerialBuffer)
+static bool Process_Command (SerialBuffer_t *SerialBuffer)
 {
+	bool commandFound = false;
     char* token = strtok(SerialBuffer->charBuf, " ");
     char* args[MAX_NUM_ARGS];
     uint32_t argCount = 0;
@@ -87,11 +103,13 @@ static void Process_Command (SerialBuffer_t *SerialBuffer)
         {
             // call the appropriate function with the parsed arguments
             g_cmdMap[cmdIndex].funcPtr(&args[1]);
+            commandFound = true;
             break;
         }
     }
 
     Clear_Buffer(SerialBuffer);
+    return (commandFound);
 }
 
 static void Clear_Buffer (SerialBuffer_t *SerialBuffer)

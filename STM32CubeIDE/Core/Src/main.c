@@ -96,7 +96,6 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  Init_Command_Parser(&g_serialRxBuf);
 
   /* USER CODE END SysInit */
 
@@ -105,6 +104,8 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  Init_Command_Parser_IT(&huart2, &g_serialRxBuf);
 
   // Testing the on-board LED with arguments
   Add_Command("LED", &cmd_Set_LED);
@@ -122,8 +123,6 @@ int main(void)
 
   strcpy(g_serialRxBuf.charBuf, "UINT 5327\n");
   Read_Buffer(&g_serialRxBuf);
-
-  HAL_UART_Receive_IT(&huart2, (uint8_t*)&g_serialRxBuf.charBuf[g_serialRxBuf.tail], 1);
 
   /* USER CODE END 2 */
 
@@ -336,25 +335,28 @@ void cmd_Set_Uint_Value(char** Args)
 		validCommand = true;
 	}
 
+	uint32_t txBufferLength = 0;
+	char txBuffer[SERIAL_BUFFER_LENGTH];
 	if (true == validCommand)
 	{
+		txBufferLength = sprintf(txBuffer, "UINT set to %s \r\n", Args[0]);
+		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
 		Set_Uint_Value(value);
 	}
 	else
 	{
 		// Handle the invalid argument here
+		txBufferLength = sprintf(txBuffer, "UINT argument '%s' is invalid \r\n", Args[0]);
+		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
 	}
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (&huart2.pRxBuffPtr[0] != (uint8_t*)&g_serialRxBuf.charBuf[(g_serialRxBuf.tail + 1)])
+	if (&huart2 == huart)
 	{
-		g_serialRxBuf.charBuf[g_serialRxBuf.tail] = *(huart2.pRxBuffPtr - 1);
+		UART_IT_ISR_Callback(huart, &g_serialRxBuf);
 	}
-
-	++g_serialRxBuf.tail;
-	HAL_UART_Receive_IT(&huart2, (uint8_t*)&g_serialRxBuf.charBuf[g_serialRxBuf.tail], 1);
 }
 
 /* USER CODE END 4 */

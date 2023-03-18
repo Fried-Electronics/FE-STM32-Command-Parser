@@ -33,7 +33,7 @@ static bool Process_Command(SerialBuffer_t *SerialBuffer);
 static void Clear_Buffer(SerialBuffer_t *SerialBuffer);
 
 /*			Functions			*/
-void Init_Command_Parser (SerialBuffer_t *SerialBuffer)
+static void Init_Command_Parser (SerialBuffer_t *SerialBuffer)
 {
 	Clear_Buffer(SerialBuffer);
 
@@ -45,6 +45,13 @@ void Init_Command_Parser (SerialBuffer_t *SerialBuffer)
 	}
 	// Clear the command counter
 	g_numCmds = 0;
+}
+
+void Init_Command_Parser_IT(UART_HandleTypeDef *Uart, SerialBuffer_t *SerialBuffer)
+{
+	Init_Command_Parser(SerialBuffer);
+
+	HAL_UART_Receive_IT(Uart, (uint8_t*)&SerialBuffer->charBuf[0], 1);
 }
 
 void Add_Command (char* CmdName, void *FuncPtr)
@@ -110,6 +117,17 @@ static bool Process_Command (SerialBuffer_t *SerialBuffer)
 
     Clear_Buffer(SerialBuffer);
     return (commandFound);
+}
+
+void UART_IT_ISR_Callback (UART_HandleTypeDef *Uart, SerialBuffer_t *SerialBuffer)
+{
+	if (&Uart->pRxBuffPtr[0] != (uint8_t*)&SerialBuffer->charBuf[(SerialBuffer->tail + 1)])
+	{
+		SerialBuffer->charBuf[SerialBuffer->tail] = *(Uart->pRxBuffPtr - 1);
+	}
+
+	++SerialBuffer->tail;
+	HAL_UART_Receive_IT(Uart, (uint8_t*)&SerialBuffer->charBuf[SerialBuffer->tail], 1);
 }
 
 static void Clear_Buffer (SerialBuffer_t *SerialBuffer)

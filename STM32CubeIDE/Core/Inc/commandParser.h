@@ -10,6 +10,7 @@
 
 /*			Includes			*/
 #include <stdint.h>
+#include "main.h"
 
 /*			Defines			*/
 #define MAX_NUM_COMMANDS 10
@@ -25,8 +26,11 @@ typedef struct SerialBuffer_t
 } SerialBuffer_t;
 
 /*			Exported Functions			*/
-void Init_Command_Parser(SerialBuffer_t *SerialBuffer);
+void Init_Command_Parser_IT(UART_HandleTypeDef *Uart, SerialBuffer_t *SerialBuffer);
 void Add_Command(char* CmdName, void *FunctionPointer);
 void Read_Buffer(SerialBuffer_t *SerialBuffer);
+
+// Callback functions
+void UART_IT_ISR_Callback(UART_HandleTypeDef *Uart, SerialBuffer_t *SerialBuffer);
 
 #endif /* INC_COMMANDPARSER_H_ */

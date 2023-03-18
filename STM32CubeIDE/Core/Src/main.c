@@ -304,14 +304,14 @@ void cmd_Set_LED(char** Args)
 	if (true == validCommand)
 	{
 		txBufferLength = sprintf(txBuffer, "LED set to %s \r\n", Args[0]);
-		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
+		HAL_UART_Transmit(&huart2, (uint8_t*)txBuffer, txBufferLength, HAL_MAX_DELAY);
 		Set_LED(state);
 	}
 	else
 	{
 		// Handle the invalid argument here
 		txBufferLength = sprintf(txBuffer, "LED argument '%s' is invalid \r\n", Args[0]);
-		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
+		HAL_UART_Transmit(&huart2, (uint8_t*)txBuffer, txBufferLength, HAL_MAX_DELAY);
 	}
 }
 
@@ -340,14 +340,14 @@ void cmd_Set_Uint_Value(char** Args)
 	if (true == validCommand)
 	{
 		txBufferLength = sprintf(txBuffer, "UINT set to %s \r\n", Args[0]);
-		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
+		HAL_UART_Transmit(&huart2, (uint8_t*)txBuffer, txBufferLength, HAL_MAX_DELAY);
 		Set_Uint_Value(value);
 	}
 	else
 	{
 		// Handle the invalid argument here
 		txBufferLength = sprintf(txBuffer, "UINT argument '%s' is invalid \r\n", Args[0]);
-		HAL_UART_Transmit_IT(&huart2, (uint8_t*)txBuffer, txBufferLength);
+		HAL_UART_Transmit(&huart2, (uint8_t*)txBuffer, txBufferLength, HAL_MAX_DELAY);
 	}
 }
 
